@@ -1,15 +1,22 @@
 # CourtListener Semantic Search Documentation
-As of February 2nd, 2025
+As of February 3rd, 2025
 
 ## Goal
 To implement semantic search functionality within CourtListener search functions, starting with Case Law (opinions). 
 
+This is a continuation of previous experiments conducted, listed below are some key difference against previous experiments:
+| Previous Experiments | This Experiments | 
+|----------|----------|
+| Compared performance with both open source & closed source models/tools  | Focus on only open source models/tools  |
+| Used 10 SCOTUS cases as experimental dataset  | Sample ~1K cases across different courts from population to evaluate robustness |
+| Focused on QA task formation  | Experiment with both QA and IR task formation |
+
 ## Experimental Design
 1. Identify existing products already in the market.
 2. Identify state-of-the-art (SOTA) methods.
-4. Extract a sample of the Case Law data for experiments, perform cleaning and assign label as needed for training, finetuning, and/or evaluation.
-5. Use the sample dataset to experiment with various solutions.
-6. Identify the best solution for CourtListener, balancing performance (evaluation metrics), cost (monetary and compute), reliability, and ease of use.
+3. Extract a sample of the Case Law data for experiments, perform cleaning and assign label as needed for training, finetuning, and/or evaluation.
+4. Use the sample dataset to experiment with various solutions.
+5. Identify the best solution for CourtListener, balancing performance (evaluation metrics), cost (monetary and compute), reliability, and ease of use.
 
 ## Terminology
 1. **Query**: what the user inputs in the search bar, can be questions or statements.
@@ -34,7 +41,7 @@ To implement semantic search functionality within CourtListener search functions
         
 #### Semantic search embedded as part of RAG. 
 RAG systems are built for "conversational" interactions, so the query is often formulated as a question.
-   1. [Westlaw Precision with CoCounsel]((https://legal.thomsonreuters.com/en/c/westlaw/westlaw-precision-generative-ai))
+   1. [Westlaw Precision with CoCounsel](https://legal.thomsonreuters.com/en/c/westlaw/westlaw-precision-generative-ai)
    2. [Lexis + AI](https://www.lexisnexis.com/en-us/products/lexis-plus-ai.page)
    3. [vincent-ai (part of vLex)](https://vlex.com/vincent-ai)
    4. [servient](https://www.servient.com/)
@@ -53,7 +60,7 @@ RAG systems are built for "conversational" interactions, so the query is often f
       - [Legal Case Retrieval: A Survey of the State of the Art](https://aclanthology.org/2024.acl-long.350/): more of a survey with China-centered data & research, not super applicable to US-centered tasks.
       - [An Element is Worth a Thousand Words: Enhancing Legal Case Retrieval by Incorporating Legal Elements](https://aclanthology.org/2024.findings-acl.139/): again, a more China-centered research, but the model architecture is transferrable, the key idea is to integrate Named Entity Recognition (NER) into the retrieval task, also important to mask the person/place etc to make the texts more generalizable. Key learnings: 1) long context window doesn't work well, and 2) BM25 is still a very strong ranking algorithm.
       - [Measuring the Groundedness of Legal Question-Answering Systems](https://aclanthology.org/2024.nllp-1.14/): focused on generative tasks (vs traditional retrieval), but the some of the set-up is transferrable, one idea is to generate ground-truth by using one model to generate query-response pairs and then use another model to evaluate the semantic similarity to select the "golden" standards.
-   - [Its All Relative! -- A Synthetic Query Generation Approach for Improving Zero-Shot Relevance Prediction](https://research.google/pubs/its-all-relative-a-synthetic-query-generation-approach-for-improving-zero-shot-relevance-prediction/)
+   - [Its All Relative! -- A Synthetic Query Generation Approach for Improving Zero-Shot Relevance Prediction](https://research.google/pubs/its-all-relative-a-synthetic-query-generation-approach-for-improving-zero-shot-relevance-prediction/): a number of ideas and findings could be useful for this project, including methods to generate synthetic dataset and model selection. 
 - Base models (require fine-tuning):
    - [ModernBERT](https://huggingface.co/blog/modernbert)
    - [ColBERT](https://huggingface.co/colbert-ir/colbertv2.0)
@@ -77,12 +84,12 @@ Previous experiments focused primarily on a QA task formation, here I will also 
 ### Data
 Given we do not current have a set of "golden" standards of query-result pairs (in either QA or IR format) for finetuning or evaluation, we will generate synthetic data using the opinions we have in Case Law (ie, we already have the results but need the queries). 
 
-For both QA and IR tasks, I decided to use an LLM to generate the relevant and irrelevant queries associated with the results, and use another LLM to evaluate the generated queries and the results and filter for only the query-result pairs above a threshold, this filtered result will serve as our "golden" standards for evaluation. This approach is largely inspired by [this Google paper](https://research.google/pubs/its-all-relative-a-synthetic-query-generation-approach-for-improving-zero-shot-relevance-prediction/), however, given the scope of this project, I directly used LLMs out-of-the-box. (also see limitations and future works)
+For both QA and IR tasks, I decided to use an LLM to generate the relevant and irrelevant queries associated with the results, and use another LLM to evaluate the generated queries and the results and filter for only the query-result pairs above a threshold, this filtered result will serve as our "golden" standards for evaluation. This approach is largely inspired by [this Google paper](https://research.google/pubs/its-all-relative-a-synthetic-query-generation-approach-for-improving-zero-shot-relevance-prediction/), given the scope of this project, I directly used LLMs out-of-the-box.
 
-Furthermore, previous experiments focused primarily on (Supreme Court of the United States) SCOTUS opinions, because they are well reasoned, well organized, and well documented. Our database indeed has a large corpus of SCOTUS opinions, however, there are also opinions from many other courts, with a very long tail of courts that only has a handful of opinions. To test the robustness of the model against our corpus, and to reduce the gap between experimental and production performance, I selected opinions from a wide range of courts, closely adhering to the population distribution, for this round of experiments.
+Furthermore, previous experiments focused primarily on (Supreme Court of the United States) SCOTUS opinions, because they are well reasoned, well organized, and well documented. Our database indeed has a large corpus of SCOTUS opinions, however, there are also opinions from many other courts, with a very long tail of courts that only has a handful of opinions. To test the robustness of the model against our corpus and to reduce the gap between experimental and production performance, I selected opinions from a wide range of courts and of varying length, closely adhering to the population distribution, for this round of experiments.
 
 Steps:
-1. Sample opinions from the Development Database (also see limitations and future works)
+1. Sample opinions from the Development Database
    - **Notebook path**: /notebooks_&\_data/0.opinion_stats_&_sampling.ipynb
    - **Stats**: 953 opinions selected (\~1% of 9.7M opinions), covering 184 courts (~8% of 2K courts), with the top 20 courts (including SCOTUS) covering ~50% of sampled opinions. The sample distribution is visually compared against the population distribution to ensure they are similar.
 2. Preprocess & clean the opinions
@@ -92,7 +99,7 @@ Steps:
       - To clean up the opinions from different sources and create one opinion column
 3. Feed the cleaned opinions to an LLM to generate queries
    - **Notebook path**: /notebooks_&\_data/2a.generate_queries.ipynb
-      - After reading through some of the existing tools to generate synthetic IR datasets, I decided to use gpt-4o-mini as the LLM to generate the queries based on 1) the API is easy to use, 2) the model performance is comparable to that of 4o at a fraction of the cost, 3) OpenAI's models are still considered SOTA for many use cases, has very long context windows, and has robust language understanding and legal knowledge.
+      - After reading through some of the existing tools to generate synthetic IR datasets, I decided to use gpt-4o-mini as the LLM to generate the queries based on 1) the API is easy to use, 2) the model performance is comparable to that of 4o at a fraction of the cost, 3) OpenAI's models are still considered SOTA for many use cases, has very long context windows, and has robust language understanding and legal knowledge. (Even though gpt-4o-mini is not open source, given a good data is the cornerstone of a successful project, I figured a couple bucks is worth it.)
       - To reduce the number of requests sent through the API, I batched the opinions to batches. I also asked the model to generate both relevant and irrelevant queries in one request, and the prompt was tuned through experiments on small batches.
    - **Notebook path**: /notebooks_&\_data/2b.generate_questions.ipynb
       - Previous experiments used [llamaindex](https://docs.llamaindex.ai/en/stable/examples/finetuning/embeddings/finetune_embedding_adapter/#generate-synthetic-queries)'s native support of generating QA embeddings through GPT models. Here, I directly used gpt-4o-mini through its API and had the model generate both relevant and irrelevant questions, the prompt was also tuned through experiments on small batches.
@@ -105,24 +112,58 @@ Steps:
    - **Notebook path**: /notebooks_&\_data/3b.combine_datasets.ipynb
       - To combine the dataset and split the data to train vs test sets.
       - Given we do not plan to train a model from scratch and need a smaller set of datapoints for finetuning, and we most likely plan to use an out-the-box model without finetuning, I did a ~55/45 split.
-5. EDA
-   - TO BE COMPLETED!!!
 
 ### Model & Evaluation
 Adhering to our mission statement and the open source nature of our work, we narrowed our model selection to only open source models and models that are not overly large such that it can be used on a large corpus without exessive compute. Furthermore, we believe an open source models that doesn't require an external API may be more secure and better suited for our platform given privacy concerns. Therefore, SOTA models such as OpenAI, Mistral, Voyage AI etc are not considered in our experiments.
-
+- **Notebook path**: /notebooks_&\_data/4...series
+  
 1. Previous experiments
-   - Previous experiments were conducted on 10 SCOTUS cases across 5 models: [adlumal/auslaw-embed-v1.0](https://huggingface.co/adlumal/auslaw-embed-v1.0), [BAAI/bge-large-en-v1.5](https://huggingface.co/BAAI/bge-large-en-v1.5), [sentence-transformers/all-MiniLM-L6-v2](https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2), [WhereIsAI/UAE-Large-V1](https://huggingface.co/WhereIsAI/UAE-Large-V1), and [sentence-transformers/multi-qa-mpnet-base-dot-v1](https://huggingface.co/sentence-transformers/multi-qa-mpnet-base-dot-v1), with `multi-qa-mpnet-base-dot-v1` having the best performance. 
+   - Previous experiments were conducted on 10 SCOTUS cases across 5 models: [adlumal/auslaw-embed-v1.0](https://huggingface.co/adlumal/auslaw-embed-v1.0), [BAAI/bge-large-en-v1.5](https://huggingface.co/BAAI/bge-large-en-v1.5), [sentence-transformers/all-MiniLM-L6-v2](https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2), [WhereIsAI/UAE-Large-V1](https://huggingface.co/WhereIsAI/UAE-Large-V1), and [sentence-transformers/multi-qa-mpnet-base-dot-v1](https://huggingface.co/sentence-transformers/multi-qa-mpnet-base-dot-v1), with `multi-qa-mpnet-base-dot-v1` having the best performance.
+   - Previous experiments used Hit Rate and MRR as the evaluation metrics. Given we are not performing reranking at this stage, I will also use the same evaluation metrics for the experiments.
 2. Pretrained SentenceTransformer
-   - Building on top of previous experiments, I began with a few more pretrained SentenceTransformer models, including `multi-qa-mpnet-base-dot-v1`, to confirm `multi-qa-mpnet-base-dot-v1` is the best pretrained SentenceTransformer model. The models are selected based on the [SentenceTransformer performance board](https://www.sbert.net/docs/sentence_transformer/pretrained_models.html). I began with a chunk size of 250 given the documentation "Further note that the model was just trained on input text up to 250 word pieces. It might not work well for longer text.", however, from the experiment, we see the model performed better with a 512 context size.
+   - Building on top of previous experiments, I began with a few more pretrained SentenceTransformer models, including `multi-qa-mpnet-base-dot-v1`, to confirm `multi-qa-mpnet-base-dot-v1` is the best pretrained SentenceTransformer model. The models are selected based on the [SentenceTransformer performance board](https://www.sbert.net/docs/sentence_transformer/pretrained_models.html). I began with a chunk size of 250 given the documentation "Further note that the model was just trained on input text up to 250 word pieces. It might not work well for longer text.", however, from the experiment, we see the models performed better with a 512 context size.
    - The models experimented are: [multi-qa-mpnet-base-dot-v1](https://huggingface.co/sentence-transformers/multi-qa-mpnet-base-dot-v1), [all-mpnet-base-v2](https://huggingface.co/sentence-transformers/all-mpnet-base-v2), [multi-qa-distilbert-cos-v1](https://huggingface.co/sentence-transformers/multi-qa-distilbert-cos-v1), and [all-distilroberta-v1](https://huggingface.co/sentence-transformers/all-distilroberta-v1).
-   - Overall, `multi-qa-mpnet-base-dot-v1` performed the best amongst the four models, in both QA and IR task formation, and the longer context size of 512 improved the performance for all models. Note that this also means if the user were to input a statement vs a question, we would expect a slight performance dip.
+   - Overall, `multi-qa-mpnet-base-dot-v1` performed the best amongst the four models, in both QA and IR task formation, and the longer context size of 512 improved the performance for all models. Note that this also means if the user were to input a statement vs a question, we would expect a slight performance dip. The latency of `multi-qa-mpnet-base-dot-v1` is also pretty reasonable, so `multi-qa-mpnet-base-dot-v1` is the winner in this round of experiments.
    - ![Eval results](img/4a.eval.png)
 3. Other existing pretrained open source solutions
-   - In addition to pretrained models native to SentenceTransformer, there are also many other models with SentenceTransformer integration for inference. I selected the models based on the MTEB board on HuggingFace as well as the [most downloaded models from HuggingFace Models for sentence similarity](https://huggingface.co/models?pipeline_tag=sentence-similarity&sort=downloads). In addition to the below models, I initially also selected [Alibaba-NLP/gte-Qwen2-7B-instruct](https://huggingface.co/Alibaba-NLP/gte-Qwen2-7B-instruct) for experiments, however, this model requires too much GPU memory (>15GB), so it is not practical for our use case. I began with a context size of 512, which is a commonly used chunk size for language models, however, a few of the models also supported long context windows of up to 8192 context size, so I also experimented with long context size.
+   - In addition to pretrained models native to SentenceTransformer, there are also many other models with SentenceTransformer integration for inference. I selected the models based on the MTEB board on HuggingFace as well as the [most downloaded models from HuggingFace Models for sentence similarity](https://huggingface.co/models?pipeline_tag=sentence-similarity&sort=downloads). In addition to the below models, I initially also selected [Alibaba-NLP/gte-Qwen2-7B-instruct](https://huggingface.co/Alibaba-NLP/gte-Qwen2-7B-instruct) for experiments, however, this model required too much GPU memory (>15GB), so it is not practical for our use case. I began with a context size of 512, which is a commonly used chunk size for language models, however, a few of the models also supported long context windows of up to 8192 context size, so I also experimented with long context size.
    - The models experimented are: [Alibaba-NLP/gte-large-en-v1.5](https://huggingface.co/Alibaba-NLP/gte-large-en-v1.5), [thenlper/gte-large](https://huggingface.co/thenlper/gte-large), [nomic-ai/nomic-embed-text-v1](https://huggingface.co/nomic-ai/nomic-embed-text-v1.5), and [BAAI/bge-m3](https://huggingface.co/BAAI/bge-m3). [thenlper/gte-large](https://huggingface.co/thenlper/gte-large) is the only model that did not support long context window.
-   - Overall, `Alibaba-NLP/gte-large-en-v1.5` performed the best amongst the four models, in both QA and IR task formation, with `nomic-ai/nomic-embed-text-v1` as a close second with a much smaller model size. Contrary to previous experiments, we see here that the longer context window (if supported by the model) provided a sizable jump in the performance. Again, we see that the models perform slightly better with a QA set-up, meaning if the user were to input a statement vs a question, we would expect a slight performance dip (except for `nomic-ai/nomic-embed-text-v1`, where an IR set-up proves to have better performance).
+   - Overall, balancing performance and latency, `thenlper/gte-large` performed the best with 512 chunk size with `nomic-ai/nomic-embed-text-v1` being the runner up and the best model with 8192 chunk size. For the models that support long context, providing long context opinions improved the performance. This is likely due to long context captures more robust semantics with long range references. Think about reading a paper, the texts in the middle of the paragraph often refers to facts mentioned earlier in the paper, if the earlier mentioned fact is not in the current chunk, the semantics associated with these important facts are now missing. 
    - ![Eval results](img/4b.eval.png)
-     
+4. Pretrained open source solutions finetuned on top of ModernBERT
+   - [ModernBert](https://huggingface.co/blog/modernbert) was released earlier this year and showed significant improvements over previous BERT-family models. In addition, ModernBERT provides capabilities of long contexts, which could be particularly useful for legal opinions. Therefore, I also experimented with a few models that have been finetuned on top of ModernBERT.
+   - The models experimented are: [Alibaba-NLP/gte-modernbert-base](https://huggingface.co/Alibaba-NLP/gte-modernbert-base), [nomic-ai/modernbert-embed-base](https://huggingface.co/nomic-ai/modernbert-embed-base), and [lightonai/modernbert-embed-large](https://huggingface.co/lightonai/modernbert-embed-large). Since ModernBERT has only been released for a month, there aren't that many options yet, but given the model capabilities, we should expect more models to come out in the coming year.
+   - Overall, balancing performance and latency, `nomic-ai/modernbert-embed-base` is the unchallenged winner in both 512 chunk size and 8192 chunk size for both QA and IR task formation. Even though `lightonai/modernbert-embed-large` had better performance, due to the model size, the performance-latency trade-off is too great for it to be beneficial for production use case. Consistent with the other experiments, larger chunk sizes improves the performance. `nomic-ai/modernbert-embed-base` with 8192 chunk size and in a QA task formation had the best performance amongst all experiments.
+   - ![Eval results](img/4c.eval.png)
+
+NOTE: the latency shown in the images are for encoding both the query and context in real-time. In production, the context would be encoded in advance, and we would have multiple clusters managing the workload, therefore, the latency would be at a fraction of what's shown.
+
+### Conclusion
+Given the experimental results above, the two models I recommend are:
+1. `multi-qa-mpnet-base-dot-v1` with 512 chunk size
+2. `nomic-ai/modernbert-embed-base` with 8192 chunk size
+
+With a **slight** preference towards `nomic-ai/modernbert-embed-base`, given:
+1. It provides a five percentage point advantage in both metrics without a substantial increase in latency
+2. It is finetuned on the latest encoder SOTA model (ModernBERT)
+3. It allows for efficient long context embedding and retrieval, which is better suited for legal opinions
+
+Below is some observations from the results generated using the two models. Note that for categories with very few examples, the evaluation results are not meaningful :
+- **Notebook path**: /notebooks_&\_data/5.analyze_results.ipynb
+1. We have a lot of opinions from 2022 compared to other years. `nomic-ai/modernbert-embed-base` performed better on opinions from recent years than `multi-qa-mpnet-base-dot-v1` did, which could be attributed to the more recent training data used to train ModernBERT
+2. Majority of our cases have word counts between 50 and 1500, with very few cases having more than 8000 words. Using 8192 as chunk size would allow each document to be embedded to one embedding instead of multiple, creating more efficient retrieval. Ignoring cases with fewer than 50 word counts, which are unlikely to contain meaningful substance. `nomic-ai/modernbert-embed-base` performed better with documents fewer than 1500 word counts, which is majority of our data.
+3. There is no notable difference in performance between opinions sourced from `opinion_xml_harvard` or `opinion_html_with_citations`, there is also no notable difference in performance between opinion types and court jurisdiction.
+4. `nomic-ai/modernbert-embed-base` performed substantially better with more populated courts such as `nyappdiv` and `scotus`, which are courts that make up a large portion of our corpus.
 
 ### Limitation & Future Works
+
+|Topic | Limitations | Future Works | 
+|------|----------|----------|
+| Data | The opinions used in project are extracted from the development database, given the rate at which the production database is updated, it is possible the dataset used is not representative of the production database  | Consider using production dataset to create a more representative dataset |
+| Data | The datase only considered the opinions as contexts, however, other aspects of docket filings, such as headmatter, headnotes, posture, syllabus etc could be beneficial in providing additional context  | Consider adding other aspects of the filing in addition to the opinion for semantic search results |
+| Data | The dataset is synthetically generated and the actual user queries could be substantially different from the dataset used in this project | Once v1 of semantic search is deployed, we will extract actual user queries and employ legal experts to review the retrieved documents and create a more representative dataset |
+| Data | Given the train/test dataset is split based on opinion_id, it is possible that opinions belonging to the same opinion cluster may appear in both train and test set, imposing potential data leakage  | Revisit the data split before finetuning the models to ensure no data leakage |
+| Model |The scope of this project is limited to utilizing pretrained models out of the box, we anticipate finetuning these models would lead to improved performance  | Revisit the latest research and SOTA solutions periodically and finetune models with our dataset to improve performance |
+| Model | The scope of this project also did not consider reranking, which will improve the retrieval performance  | Experiment with different reranking models to add to the semantic search pipeline |
+| Product | The current design is to implement a toggle between key word search and semantic search, however, existing research shows hybrid search is often the more superior solution than pure semantic search | Experiment with hybrid search and consider replacing generic semantic search with hybrid search for boosted performance, also consider a combination of key work search with semantic reranking |
+| Product | Semantic search will be made available for opinion-based search on Case Law, there are many databases which could be benefited from semantic search | Add semantic search capability to other aspects of the product line, including documents, dockets, citations, and oral arguments |
