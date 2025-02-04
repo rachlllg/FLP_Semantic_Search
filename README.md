@@ -1,6 +1,9 @@
 # CourtListener Semantic Search Documentation
 As of February 3rd, 2025
 
+## Foreword
+This project is the result of community effort within the Free Law Project and the broader legal community, see [GitHub ticket](https://github.com/freelawproject/courtlistener/issues/4962) for discussions and previous experiments.
+
 ## Goal
 To implement semantic search functionality within CourtListener search functions, starting with Case Law (opinions). 
 
@@ -165,5 +168,6 @@ Below is some observations from the results generated using the two models. Note
 | Data | Given the train/test dataset is split based on opinion_id, it is possible that opinions belonging to the same opinion cluster may appear in both train and test set, imposing potential data leakage  | Revisit the data split before finetuning the models to ensure no data leakage |
 | Model |The scope of this project is limited to utilizing pretrained models out of the box, we anticipate finetuning these models would lead to improved performance  | Revisit the latest research and SOTA solutions periodically and finetune models with our dataset to improve performance |
 | Model | The scope of this project also did not consider reranking, which will improve the retrieval performance  | Experiment with different reranking models to add to the semantic search pipeline |
+| Model | Techniques such as [HyDE](https://arxiv.org/abs/2212.10496) could potentially improve the retrieval quality by transforming user queries to more relevant queries  | Revisit the possibility of employing an open source decoder LLM for HyDE to improve retrieval quality, while balancing complexity, cost, minimizing hallucination, and performance. |
 | Product | The current design is to implement a toggle between key word search and semantic search, however, existing research shows hybrid search is often the more superior solution than pure semantic search | Experiment with hybrid search and consider replacing generic semantic search with hybrid search for boosted performance, also consider a combination of key work search with semantic reranking |
 | Product | Semantic search will be made available for opinion-based search on Case Law, there are many databases which could be benefited from semantic search | Add semantic search capability to other aspects of the product line, including documents, dockets, citations, and oral arguments |
