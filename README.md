@@ -94,7 +94,7 @@ Furthermore, previous experiments focused primarily on (Supreme Court of the Uni
 Steps:
 1. Sample opinions from the Development Database
    - **Notebook path**: /notebooks_&\_data/0.opinion_stats_&_sampling.ipynb
-   - **Stats**: 953 opinions selected (\~1% of 9.7M opinions), covering 184 courts (~8% of 2K courts), with the top 20 courts (including SCOTUS) covering ~50% of sampled opinions. The sample distribution is visually compared against the population distribution to ensure they are similar.
+   - **Stats**: 953 opinions selected (\~0.01% of 9.7M opinions), covering 184 courts (~8% of 2K courts), with the top 20 courts (including SCOTUS) covering ~50% of sampled opinions. The sample distribution is visually compared against the population distribution to ensure they are similar.
 2. Preprocess & clean the opinions
    - **Notebook path**: /notebooks_&\_data/1a.preprocess_columns.ipynb
       - To clean up the columns after the SQL join
