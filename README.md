@@ -1,5 +1,5 @@
 # CourtListener Semantic Search Documentation
-As of February 3rd, 2025
+As of March 3rd, 2025
 
 ## Foreword
 This project is the result of community effort within the Free Law Project and the broader legal community, see [GitHub ticket](https://github.com/freelawproject/courtlistener/issues/4962) for discussions and previous experiments.
@@ -102,7 +102,7 @@ Steps:
       - To clean up the opinions from different sources and create one opinion column
 3. Feed the cleaned opinions to an LLM to generate queries
    - **Notebook path**: /notebooks_&\_data/2a.generate_queries.ipynb
-      - After reading through some of the existing tools to generate synthetic IR datasets, I decided to use gpt-4o-mini as the LLM to generate the queries based on 1) the API is easy to use, 2) the model performance is comparable to that of 4o at a fraction of the cost, 3) OpenAI's models are still considered SOTA for many use cases, has very long context windows, and has robust language understanding and legal knowledge. (Even though gpt-4o-mini is not open source, given a good data is the cornerstone of a successful project, I figured a couple bucks is worth it.)
+      - After reading through some of the existing tools to generate synthetic IR datasets, I decided to use gpt-4o-mini as the LLM to generate the queries based on 1) the API is easy to use, 2) the model performance is comparable to that of 4o at a fraction of the cost, 3) OpenAI's models are still considered SOTA for many use cases, has very long context windows, and has robust language understanding and legal knowledge. 
       - To reduce the number of requests sent through the API, I batched the opinions to batches. I also asked the model to generate both relevant and irrelevant queries in one request, and the prompt was tuned through experiments on small batches.
    - **Notebook path**: /notebooks_&\_data/2b.generate_questions.ipynb
       - Previous experiments used [llamaindex](https://docs.llamaindex.ai/en/stable/examples/finetuning/embeddings/finetune_embedding_adapter/#generate-synthetic-queries)'s native support of generating QA embeddings through GPT models. Here, I directly used gpt-4o-mini through its API and had the model generate both relevant and irrelevant questions, the prompt was also tuned through experiments on small batches.
@@ -158,6 +158,44 @@ Below is some observations from the results generated using the two models. Note
 3. There is no notable difference in performance between opinions sourced from `opinion_xml_harvard` or `opinion_html_with_citations`, there is also no notable difference in performance between opinion types and court jurisdiction.
 4. `nomic-ai/modernbert-embed-base` performed substantially better with more populated courts such as `nyappdiv` and `scotus`, which are courts that make up a large portion of our corpus.
 
+## Finetuning
+I briefly experimented with finetuning a pretrained encoder model for our task. Below are the steps I undertook for generating the dataset and the eventual evaluation of the finetuned models.
+
+#### Data Preparation
+1. Used the train and test datasets generated above, identified `docket_numbers` that are in both train and test and put those records as `validation`. This ensures no opinion from the same docket or the same cluster appear in both the train and the test set (no data leakage).
+   - This created 390 unique opinions in train, 113 unique opinions in val, and 450 unique opinions in test (the test set remains the same as above)
+2. Given opinions of very short length would not provide meaningful retrieval, I removed any records that have fewer than 50 words in length (~100 tokens)
+   - This created 315 unique opinions in train, 93 unique opinions in val, 362 unique opinions in test
+3. Chunk the train and val opinions to chunks with at most 512 tokens and 8192 tokens, chunked with sentence boundary and 2-sentence overlap between chunks
+   - For the set with 512 context window, this created 2828 unique chunks in train and 489 unique chunks in val
+   - For the set with 8192 context window, this created 351 unique chunks in train, 95 unique chunks in val
+4. Used GPT-4o with a slightly different prompt from above to generate relevant and irrelevant questions for each chunk
+   - I selected GPT-4o here (vs GPT-4o mini above) for its superior intelligence since the data here will be used for training
+   - I used a slightly different prompt from above to further ensure the robustness in the evaluation (no data leakage)
+5. For final evaluation, I will use the same test set as used in above evaluations to ensure the results are comparable
+
+#### Model finetuning
+1. I selected below models for finetuning with the chunk-relevant-irrelevant triples generated above
+   - bert-base-cased
+   - roberta-base
+   - microsoft/mpnet-base
+   - answerdotai/ModernBERT-base
+   - alea-institute/kl3m-doc-pico-001
+   - alea-institute/kl3m-doc-nano-001
+   - alea-institute/kl3m-doc-micro-uncased-001
+   - alea-institute/kl3m-doc-small-uncased-001
+   - nomic-ai/modernbert-embed-base
+2. With 512 context window, all models were trained for only 1 epoch and all hyperparameters used for finetuning were the same except for adjusting for batch_size to accomodate the GPU RAM limitation (I used the T4 GPU with 15GB GPU RAM provided for free by Google Colab).
+3. I was not able to train the ModernBERT based models with the 8192 long context dataset due to GPU OOM error, and flash attention is not supported on the version of GPU used for this task.
+
+#### Model Evaluation
+To ensure the results are comparable to the experiments already conducted above, I used the same 450 test datapoints to evaluate the model performance. It should be noted that in production, short opinions will be removed which should lead to a slight performance increase.
+
+Below is the summary of results. We still see the `nomic-ai/modernbert-embed-base` has the best performance and we do a sizable improvement from finetuning. In fact, the finetuned model with 512 chunk size now surpasses the original model with 8192 chunk size. Finetuning the model with 8192 chunk size data should also improve the performance of the 8192 chunk size inference.
+
+![Eval results](img/8j.eval.png)
+
+
 ### Limitation & Future Works
 
 |Topic | Limitations | Future Works | 
@@ -165,8 +203,7 @@ Below is some observations from the results generated using the two models. Note
 | Data | The opinions used in project are extracted from the development database, given the rate at which the production database is updated, it is possible the dataset used is not representative of the production database  | Consider using production dataset to create a more representative dataset |
 | Data | The datase only considered the opinions as contexts, however, other aspects of docket filings, such as headmatter, headnotes, posture, syllabus etc could be beneficial in providing additional context  | Consider adding other aspects of the filing in addition to the opinion for semantic search results |
 | Data | The dataset is synthetically generated and the actual user queries could be substantially different from the dataset used in this project | Once v1 of semantic search is deployed, we will extract actual user queries and employ legal experts to review the retrieved documents and create a more representative dataset |
-| Data | Given the train/test dataset is split based on opinion_id, it is possible that opinions belonging to the same opinion cluster may appear in both train and test set, imposing potential data leakage  | Revisit the data split before finetuning the models to ensure no data leakage |
-| Model |The scope of this project is limited to utilizing pretrained models out of the box, we anticipate finetuning these models would lead to improved performance  | Revisit the latest research and SOTA solutions periodically and finetune models with our dataset to improve performance |
+| Model |The scope of this project is limited to utilizing pretrained models out of the box with limited finetuning experiments, we anticipate further targeted finetuning would lead to improved performance  | Revisit the latest research and SOTA solutions periodically and finetune models with long context dataset to improve performance |
 | Model | The scope of this project also did not consider reranking, which will improve the retrieval performance  | Experiment with different reranking models to add to the semantic search pipeline |
 | Model | Techniques such as [HyDE](https://arxiv.org/abs/2212.10496) could potentially improve the retrieval quality by transforming user queries to more relevant queries  | Revisit the possibility of employing an open source decoder LLM for HyDE to improve retrieval quality, while balancing complexity, cost, minimizing hallucination, and performance. |
 | Product | The current design is to implement a toggle between key word search and semantic search, however, existing research shows hybrid search is often the more superior solution than pure semantic search | Experiment with hybrid search and consider replacing generic semantic search with hybrid search for boosted performance, also consider a combination of key work search with semantic reranking |
