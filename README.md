@@ -186,14 +186,14 @@ I briefly experimented with finetuning a pretrained encoder model for our task. 
    - alea-institute/kl3m-doc-small-uncased-001
    - nomic-ai/modernbert-embed-base
 2. With 512 context window, all models were trained for only 1 epoch and all hyperparameters used for finetuning were the same except for adjusting for batch_size to accomodate the GPU RAM limitation (I used the T4 GPU with 15GB GPU RAM provided for free by Google Colab).
-3. I was not able to train the ModernBERT based models with the 8192 long context dataset due to GPU OOM error, and flash attention is not supported on the version of GPU used for this task.
+3. With 8192 context window, all models were trained for 2 epochs with batch_size of 2 and reduced learning rate compared to the models with 512 context window. The models were trained on an A10 GPU with 24GB GPU RAM in EC2.
 
 #### Model Evaluation
 To ensure the results are comparable to the experiments already conducted above, I used the same 450 test datapoints to evaluate the model performance. It should be noted that in production, short opinions will be removed which should lead to a slight performance increase.
 
-Below is the summary of results. We still see the `nomic-ai/modernbert-embed-base` has the best performance and we do a sizable improvement from finetuning. In fact, the finetuned model with 512 chunk size now surpasses the original model with 8192 chunk size. Finetuning the model with 8192 chunk size data should also improve the performance of the 8192 chunk size inference.
+Below is the summary of results. We still see the `nomic-ai/modernbert-embed-base` has the best performance and a sizable improvement from finetuning. In fact, the finetuned model with 512 chunk size is now the model with the best performance. It is important to note that due to the chunk size difference, the number of training datapoints for the 512 chunk size model is substantially more than that for the 8192 chunk size model (ie, an opinion with 2000 tokens would have produced ~3 chunks with 512 chunk size vs 1 chunk for 8192 chunk size). We still see a slight improvement in the 8192 chunk size model after finetuning, but more training datapoints is needed to further boost the performance. 
 
-![Eval results](img/8j.eval.png)
+![Eval results](img/8.eval.png)
 
 
 ### Limitation & Future Works
@@ -203,7 +203,7 @@ Below is the summary of results. We still see the `nomic-ai/modernbert-embed-bas
 | Data | The opinions used in project are extracted from the development database, given the rate at which the production database is updated, it is possible the dataset used is not representative of the production database  | Consider using production dataset to create a more representative dataset |
 | Data | The datase only considered the opinions as contexts, however, other aspects of docket filings, such as headmatter, headnotes, posture, syllabus etc could be beneficial in providing additional context  | Consider adding other aspects of the filing in addition to the opinion for semantic search results |
 | Data | The dataset is synthetically generated and the actual user queries could be substantially different from the dataset used in this project | Once v1 of semantic search is deployed, we will extract actual user queries and employ legal experts to review the retrieved documents and create a more representative dataset |
-| Model |The scope of this project is limited to utilizing pretrained models out of the box with limited finetuning experiments, we anticipate further targeted finetuning would lead to improved performance  | Revisit the latest research and SOTA solutions periodically and finetune models with long context dataset to improve performance |
+| Model |The scope of this project is limited to utilizing pretrained models out of the box with limited finetuning experiments, we anticipate further targeted finetuning would lead to improved performance  | Revisit the latest research and SOTA solutions periodically and finetune models with more datapoints with long context dataset to improve performance |
 | Model | The scope of this project also did not consider reranking, which will improve the retrieval performance  | Experiment with different reranking models to add to the semantic search pipeline |
 | Model | Techniques such as [HyDE](https://arxiv.org/abs/2212.10496) could potentially improve the retrieval quality by transforming user queries to more relevant queries  | Revisit the possibility of employing an open source decoder LLM for HyDE to improve retrieval quality, while balancing complexity, cost, minimizing hallucination, and performance. |
 | Product | The current design is to implement a toggle between key word search and semantic search, however, existing research shows hybrid search is often the more superior solution than pure semantic search | Experiment with hybrid search and consider replacing generic semantic search with hybrid search for boosted performance, also consider a combination of key work search with semantic reranking |
