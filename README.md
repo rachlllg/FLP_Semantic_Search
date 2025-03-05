@@ -1,5 +1,5 @@
 # CourtListener Semantic Search Documentation
-As of March 3rd, 2025
+As of March 5th, 2025
 
 ## Foreword
 This project is the result of community effort within the Free Law Project and the broader legal community, see [GitHub ticket](https://github.com/freelawproject/courtlistener/issues/4962) for discussions and previous experiments.
@@ -189,9 +189,9 @@ I briefly experimented with finetuning a pretrained encoder model for our task. 
 3. With 8192 context window, all models were trained for 2 epochs with batch_size of 2 and reduced learning rate compared to the models with 512 context window. The models were trained on an A10 GPU with 24GB GPU RAM in EC2.
 
 #### Model Evaluation
-To ensure the results are comparable to the experiments already conducted above, I used the same 450 test datapoints to evaluate the model performance. It should be noted that in production, short opinions will be removed which should lead to a slight performance increase.
+Below is the summary of results. The `Free-Law-Project/modernbert-embed-base_finetune_xxx` models are what we finetuned on top of the `nomic-ai/modernbert-embed-base` model, which have the best performance and a sizable improvement from finetuning. In fact, the finetuned model with 512 chunk size is now the model with the best performance. It is important to note that due to the chunk size difference, the number of training datapoints for the 512 chunk size model is substantially more than that for the 8192 chunk size model (ie, an opinion with 2000 tokens would have produced ~3 chunks with 512 chunk size vs 1 chunk for 8192 chunk size). We still see a slight improvement in the 8192 chunk size model after finetuning, but more training datapoints is needed to further boost the performance. 
 
-Below is the summary of results. We still see the `nomic-ai/modernbert-embed-base` has the best performance and a sizable improvement from finetuning. In fact, the finetuned model with 512 chunk size is now the model with the best performance. It is important to note that due to the chunk size difference, the number of training datapoints for the 512 chunk size model is substantially more than that for the 8192 chunk size model (ie, an opinion with 2000 tokens would have produced ~3 chunks with 512 chunk size vs 1 chunk for 8192 chunk size). We still see a slight improvement in the 8192 chunk size model after finetuning, but more training datapoints is needed to further boost the performance. 
+To evaluate the best model overall, I also ran eval with the `Free-Law-Project/modernbert-embed-base_finetune_512` model on the eval data chunked to 8192 chunk size. The result is comparable to that of the `Free-Law-Project/modernbert-embed-base_finetune_512` model on the eval data chunked to 512 chunk size.
 
 ![Eval results](img/8.eval.png)
 
