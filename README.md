@@ -195,6 +195,7 @@ To evaluate the best model overall, I also ran eval with the `Free-Law-Project/m
 
 ![Eval results](img/8.eval.png)
 
+It is worth noting that `microsoft/mpnet-base` and `nomic-ai/modernbert-embed-base` are models that have already been finetuned on top of a foundation model to perform semantic search tasks, whereas other models like `answerdotai/ModernBERT-base` and the `KL3M models` are foundation models that need to be finetuned to perform this specific task. The FLP model is a finetune of the finetune (we finetuned the `nomic-ai/modernbert-embed-base` model (which is a finetuned ModernBert model) with our data in hopes of giving it a bit more legal context/understanding). Even though we finetuned all models with our data, we expect the already finetuned models to always outperform the foundation models, so more comprehensive finetune with more datapoints should be considered on the foundation models.
 
 ### Limitation & Future Works
 
